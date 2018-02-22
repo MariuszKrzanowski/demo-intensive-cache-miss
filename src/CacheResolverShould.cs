@@ -9,7 +9,7 @@ namespace Tests
 {
     public class CacheResolverShould
     {
-        private const int DifferentKeysCounter= 10000;
+        private const int DifferentKeysCounter = 10000;
         private int[] _callCounters = new int[DifferentKeysCounter];
         private SemaphoreSlim _synchronizationContext = new SemaphoreSlim(0);
         private CacheResolver<int, string> _sut = new CacheResolver<int, string>();
@@ -27,14 +27,17 @@ namespace Tests
         [Fact]
         public async Task CallDataSupplierServiceOnceForEachKey()
         {
+            // arrange
             for (int i = 0; i < _callCounters.Length; i++)
             {
                 _results.Add(_sut.TakeResourceAsync(i, CacheDataSupplierMock));
             }
 
+            // act
             _synchronizationContext.Release();
             await Task.WhenAll(_results).ConfigureAwait(false);
-            
+
+            // assert 
             foreach (var result in _results)
             {
                 _receivedData.Add(result.Result);
@@ -49,34 +52,40 @@ namespace Tests
         [Fact]
         public async Task CallDataSupplierServiceOnceWhenSameKeyIsRequestedByTwoConcurrentRequests()
         {
+            // arrange
             for (int i = 0; i < _callCounters.Length; i++)
             {
                 _results.Add(_sut.TakeResourceAsync(i, CacheDataSupplierMock));
                 _results.Add(_sut.TakeResourceAsync(i, CacheDataSupplierMock));
             }
 
+            // act
             _synchronizationContext.Release();
             await Task.WhenAll(_results).ConfigureAwait(false);
+
+            // assert 
             foreach (var result in _results)
             {
                 _receivedData.Add(result.Result);
             }
 
             _receivedData.Count.Should().Be(DifferentKeysCounter);
-
             for (int i = 0; i < _callCounters.Length; i++)
             {
                 _callCounters[i].Should().Be(1);
             }
         }
-        
+
         [Fact]
         public async Task ToCallTwiceCacheWhenSameKeyIsRequestedByTwoSequentialRequests()
         {
-              for (int i = 0; i < _callCounters.Length; i++)
+            // arrange
+            for (int i = 0; i < _callCounters.Length; i++)
             {
                 _results.Add(_sut.TakeResourceAsync(i, CacheDataSupplierMock));
             }
+
+            // act
             _synchronizationContext.Release();
             await Task.WhenAll(_results).ConfigureAwait(false);
             foreach (var result in _results)
@@ -91,11 +100,13 @@ namespace Tests
             }
             _synchronizationContext.Release();
             await Task.WhenAll(_results).ConfigureAwait(false);
+
+            // assert 
             foreach (var result in _results)
             {
                 _receivedData.Add(result.Result);
             }
-            _receivedData.Count.Should().Be(2* DifferentKeysCounter);
+            _receivedData.Count.Should().Be(2 * DifferentKeysCounter);
             for (int i = 0; i < _callCounters.Length; i++)
             {
                 _callCounters[i].Should().Be(2);

@@ -10,7 +10,7 @@ namespace MrMatrix.Net.IntensiveCacheMiss
     /// </summary>
     /// <typeparam name="TKey">The type of the key. Key value is used to ask external system.</typeparam>
     /// <typeparam name="TResult">The type of the result. Result value returned from external system.</typeparam>
-    public class CacheResolver<TKey, TResult>
+    public class CacheResolver<TKey, TResult> : IDisposable
     {
 
         /// <summary>
@@ -25,6 +25,14 @@ namespace MrMatrix.Net.IntensiveCacheMiss
         /// Only operation of adding and taking single key process handler is atomic. 
         /// </summary>
         private SemaphoreSlim _lock = new SemaphoreSlim(1);
+
+        /// <summary>
+        /// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.
+        /// </summary>
+        public void Dispose()
+        {
+            ((IDisposable)_lock).Dispose();
+        }
 
         /// <summary>
         /// Method assigns process responsible of retrieving data for specified key. 
@@ -125,7 +133,10 @@ namespace MrMatrix.Net.IntensiveCacheMiss
                 {
                     _resultResolver = dataSupplier(_key);
                     _cleanupTask = _resultResolver.ContinueWith(
-                        async (_) => await _parent.RemoveSingleKeyResolverAsync(this._key, this).ConfigureAwait(false)
+                        async (_) =>
+                            {
+                                await _parent.RemoveSingleKeyResolverAsync(this._key, this).ConfigureAwait(false);
+                            }
                         );
                 }
                 _lock.Release();
